@@ -1,7 +1,7 @@
-require('dotenv').config();
+
 const express = require("express");
 const http = require("http");
-const { SocketAddress } = require('net');
+
 const app = express();
 const server = http.createServer(app);
 const socket = require("socket.io");
@@ -50,6 +50,6 @@ io.on('connection', socket => {
 
 });
 
-server.listen(process.env.PORT || 8000, () => console.log('server is running on port 8000'));
+server.listen( 8000, () => console.log('server is running on port 8000'));
 
 
