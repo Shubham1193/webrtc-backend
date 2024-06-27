@@ -13,20 +13,20 @@ const socketToRoom = {};
 
 io.on('connection', socket => {
     
-    socket.on("join room", roomID => {
-        if (users[roomID]) {
-            const length = users[roomID].length;
+    socket.on("join room", id => {
+        if (users[id]) {
+            const length = users[id].length;
             if (length === 3) {
                 socket.emit("room full");
                 return;
             }
-            users[roomID].push(socket.id);
+            users[id].push(socket.id);
         } else {
-            users[roomID] = [socket.id];
+            users[id] = [socket.id];
         }
-        socket.join(roomID)
-        socketToRoom[socket.id] = roomID;
-        const usersInThisRoom = users[roomID].filter(id => id !== socket.id);
+        socket.join(id)
+        socketToRoom[socket.id] = id;
+        const usersInThisRoom = users[id].filter(id => id !== socket.id);
         // console.log(users)
         // console.log("/////////////////////////////////////")
         // console.log(socketToRoom)
@@ -41,18 +41,18 @@ io.on('connection', socket => {
         io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id });
     });
 
-    socket.on("update-code" , ({roomID , code}) => {
-        // io.to(roomID).emit("updated-code" , code) //everyone in room
-        socket.broadcast.to(roomID).emit("updated-code" , code)
+    socket.on("update-code" , ({id , code}) => {
+        // io.to(id).emit("updated-code" , code) //everyone in room
+        socket.broadcast.to(id).emit("updated-code" , code)
         console.log(code)
     })
 
     socket.on('disconnect', () => {
-        const roomID = socketToRoom[socket.id];
-        let room = users[roomID];
+        const id = socketToRoom[socket.id];
+        let room = users[id];
         if (room) {
             room = room.filter(id => id !== socket.id);
-            users[roomID] = room;
+            users[id] = room;
           
         }
         socket.broadcast.emit('user-left' , socket.id)
