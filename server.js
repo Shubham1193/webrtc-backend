@@ -24,11 +24,12 @@ io.on('connection', socket => {
         } else {
             users[roomID] = [socket.id];
         }
+        socket.join(roomID)
         socketToRoom[socket.id] = roomID;
         const usersInThisRoom = users[roomID].filter(id => id !== socket.id);
-        console.log(users)
-        console.log("/////////////////////////////////////")
-        console.log(socketToRoom)
+        // console.log(users)
+        // console.log("/////////////////////////////////////")
+        // console.log(socketToRoom)
         socket.emit("all users", usersInThisRoom);
     });
 
@@ -39,6 +40,12 @@ io.on('connection', socket => {
     socket.on("returning signal", payload => {
         io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id });
     });
+
+    socket.on("update-code" , ({roomID , code}) => {
+        // io.to(roomID).emit("updated-code" , code) //everyone in room
+        socket.broadcast.to(roomID).emit("updated-code" , code)
+        console.log(code)
+    })
 
     socket.on('disconnect', () => {
         const roomID = socketToRoom[socket.id];
