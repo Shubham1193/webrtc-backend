@@ -7,25 +7,6 @@ const app = express();
 app.use(cors())
 app.use(express.json())
 
-var data = qs.stringify({
-  'code': 'val = int(input("Enter your value: ")) + 5\nprint(val)',
-  'language': 'py',
-  'input': '7'
-});
-// Assuming the endpoint expects JSON data:
-// app.post('/submit', async (req, res, next) => {
-//   const data = req.body;
-//   console.log(req.body)
-//   // const code = qs.stringify(data)
-//   // try {
-//   //   const response = await axios.post('https://api.codex.jaagrav.in', code); // Use axios for POST requests
-//   //   res.json(response.data); // Send the response data back to the client
-//   // } catch (error) {
-//   //   console.error(error);
-//   //   res.status(500).json({ message: "Error processing data" }); // Handle errors gracefully
-//   // }
-//   res.send(data)
-// });
 
 app.post('/submit', async (req, res, next) => {
   
@@ -42,8 +23,7 @@ app.post('/submit', async (req, res, next) => {
       console.error(error);
       res.status(500).json({ message: "Error processing data" }); // Handle errors gracefully
     }
-
-    
+  
   
 });
 
@@ -57,33 +37,12 @@ const socketToRoom = {};
 
 io.on('connection', (socket) => {
   socket.on("join room", (id) => {
-    if (users[id]) {
-      const length = users[id].length;
-      if (length === 3) {
-        socket.emit("room full");
-        return;
-      }
-      users[id].push(socket.id);
-    } else {
-      users[id] = [socket.id];
-    }
-
-    socket.join(id);
-    socketToRoom[socket.id] = id;
-
-    const usersInThisThisRoom = users[id].filter((id) => id !== socket.id);
-    socket.emit("all users", usersInThisThisRoom);
+    socket.join(id)
   });
 
-  socket.on("sending signal", (payload) => {
-    io.to(payload.userToSignal).emit('user joined', { signal: payload.signal, callerID: payload.callerID });
-  });
-
-  socket.on("returning signal", (payload) => {
-    io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id });
-  });
-
+  
   socket.on("update-code", ({ id, code }) => {
+    console.log(code, id)
     socket.broadcast.to(id).emit("updated-code", code);
   });
 
