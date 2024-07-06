@@ -35,10 +35,27 @@ const io = require("socket.io")(server, { cors: true });
 const users = {};
 const socketToRoom = {};
 
+
 io.on('connection', (socket) => {
-  socket.on("join room", (id) => {
-    socket.join(id)
+  socket.on("join room", (data) => {
+    
+    if(users[data.id]){
+      const length = users[data.id].length
+      if(length === 2){
+        socket.emit("room full")
+        return
+      }
+      users[data.id].push(data.peerId)
+    }else{
+      users[data.id] = [data.peerId]
+    }
+    console.log(users)
+    socket.join(data.id)
+    const otheruser = users[data.id].filter(id => id !== data.peerId)
+    socket.emit("other user" , otheruser)
   });
+
+  
 
   
   socket.on("update-code", ({ id, code }) => {
