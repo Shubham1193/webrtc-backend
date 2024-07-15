@@ -1,12 +1,9 @@
 import mongoose from 'mongoose';
 
-const testCaseSchema = new mongoose.Schema({
-  input: {
-    nums: [Number],
-    target: [Number]
-  },
-  output: [Number]
-});
+// const testCaseSchema = new mongoose.Schema({
+//   input: Object,
+//   output: [Number]
+// });
 
 const problemSchema = new mongoose.Schema({
   title: {
@@ -27,8 +24,8 @@ const problemSchema = new mongoose.Schema({
       required: true
     }
   },
-  defaultcode : String,
-  testCases: [testCaseSchema],
+  defaultcode : {},
+  testCases: {},
   constraints: [String],
 });
 

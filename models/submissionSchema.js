@@ -17,32 +17,10 @@ const submissionSchema = new mongoose.Schema({
   },
   language: {
     type: String,
-    required: true,
-    enum: ['javascript', 'python', 'java', 'cpp'] // Add or modify languages as needed
-  },
-  status: {
-    type: String,
-    required: true,
-    enum: ['Accepted', 'Wrong Answer', 'Time Limit Exceeded', 'Runtime Error', 'Compilation Error']
-  },
-  runtime: {
-    type: Number,
     required: true
   },
-  memory: {
-    type: Number,
-    required: true
-  },
-  submittedAt: {
-    type: Date,
-    default: Date.now
-  },
-  testCasesPassed: {
-    type: Number,
-    required: true
-  },
-  totalTestCases: {
-    type: Number,
+  result: {
+    type: Object,
     required: true
   }
 }, { timestamps: true });
