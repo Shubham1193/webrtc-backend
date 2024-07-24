@@ -24,6 +24,13 @@ const problemSchema = new mongoose.Schema({
       required: true
     }
   },
+  category : {
+    type : String
+  },
+  tag : {
+    type : String,
+  },
+  
   defaultcode : {},
   testCases: {},
   constraints: [String],

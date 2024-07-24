@@ -67,7 +67,7 @@ io.on("connection", (socket) => {
     const username = jwt.verify(data.username, process.env.JWT_SECRET);
     if (roomtoPeerid[data.id]) {
       const length = roomtoPeerid[data.id].length;
-      if (length === 4) {
+      if (length === 2) {
         socket.emit("room full");
         return;
       }
