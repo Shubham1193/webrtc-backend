@@ -11,6 +11,9 @@ const submissionSchema = new mongoose.Schema({
     ref: 'Problem',
     required: true
   },
+  questionName : {
+    type : String
+  },
   code: {
     type: String,
     required: true

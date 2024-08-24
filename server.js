@@ -8,25 +8,9 @@ import authRoutes from "./routes/authRoute.js";
 import userRouter from "./routes/userRoute.js";
 import { Server as SocketIOServer } from "socket.io";
 import jwt from "jsonwebtoken";
-import os from "os";
-import cluster from "cluster";
 import Submission from "./models/submissionSchema.js";
 
-// if (cluster.isPrimary) {
-//   // console.log(`Number of CPUs is ${totalCPUs}`);
-//   // console.log(`Primary ${process.pid} is running`);
 
-//   // Fork workers.
-//   for (let i = 0; i < 5; i++) {
-//     cluster.fork();
-//   }
-
-//   cluster.on("exit", (worker, code, signal) => {
-//     console.log(`worker ${worker.process.pid} died`);
-//     console.log("Let's fork another worker!");
-//     cluster.fork();
-//   });
-// } else {
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -48,7 +32,10 @@ app.use("/api/user", userRouter);
 
 //redis connection
 const client = createClient({url : 'rediss://red-cqailkuehbks73b22gvg:vTPutJypQOL8gt1libOtd1Xy84riwmrJ@oregon-redis.render.com:6379'});
+const client2 = createClient({url : 'rediss://red-cqailkuehbks73b22gvg:vTPutJypQOL8gt1libOtd1Xy84riwmrJ@oregon-redis.render.com:6379'});
+
 client.on("error", (err) => console.log("Redis Client Error", err));
+client2.on("error", (err) => console.log("Redis Client Error", err));
 
 //created websocket server
 const server = http.createServer(app);
@@ -80,8 +67,8 @@ io.on("connection", (socket) => {
     socketoroomid[socket.id] = data.id;
     sockettopeerid[socket.id] = data.peerId;
     sockettousernameid[socket.id] = username.id;
-    console.log(roomtoPeerid);
-    console.log(roomtouserid);
+    // console.log(roomtoPeerid);
+    // console.log(roomtouserid);
     socket.join(data.id);
     const otheruser = roomtoPeerid[data.id].filter(
       (id) => id !== data.peerId
@@ -94,10 +81,18 @@ io.on("connection", (socket) => {
     socket.broadcast.to(id).emit("updated-code", code);
   });
 
+  // question sync logic
   socket.on("question", (data) => {
     socket.broadcast.to(data.id).emit("syncQuestion", data.ques);
   });
 
+  // clear result on resubmit
+  socket.on('clear-res', ({ id }) => {
+    // console.log(id + "res clear")
+    io.to(id).emit("clear-res" , "clear");
+  })
+
+  // user disconnect logic using button
   socket.on("disco", ({ peerId, token }) => {
     const username = jwt.verify(token, process.env.JWT_SECRET);
     const usernameid = username.id;
@@ -129,6 +124,8 @@ io.on("connection", (socket) => {
 
     socket.broadcast.to(room).emit("userdisconnect", peerId);
   });
+
+
 
   socket.on("disconnect", () => {
     const username = sockettousernameid[socket.id];
@@ -165,40 +162,52 @@ io.on("connection", (socket) => {
 
 // submit code logic
 app.post("/submit", async (req, res) => {
-  let { code, userLang, id, question } = req.body; // Access data from the request body
-  if (userLang == "python") {
-    userLang = "py";
-  }
   try {
+    // Send initial response to submitting user
+    console.log(req.body)
+    res.status(200).send("submitted");
+
+    let { code, userLang, id, question } = req.body;
+
+    if (userLang === "python") {
+      userLang = "py";
+    }
+
+    // Push submission data onto Redis list 'problems'
     await client.lPush(
       "problems",
       JSON.stringify({ id: id, code: code, language: userLang, question })
     );
 
-    client.subscribe(id, (message, channel) => {
+    // Subscribe to channel 'id' to listen for result
+    client2.subscribe(id, (message, channel) => {
       if (channel === id) {
-        // console.log(JSON.parse(message));
-        io.to(id).emit("code-result", message); // Broadcast to the room
-        // save to database 
-        roomtouserid[id].map(user => {
-          saveData(user, question._id, code, userLang, JSON.parse(message));
-        })
-        res.status(200).send(JSON.parse(message));
-        client.unsubscribe(id); // Unsubscribe after receiving the message
+        // Emit result to socket room (both users)
+        io.to(id).emit("code-result", message);
+
+        // Save to database for each user in the room
+        roomtouserid[id].forEach(user => {
+          saveData(user, question._id , question.title , code, userLang, JSON.parse(message));
+        });
+
+        // Unsubscribe after handling the message
+        client2.unsubscribe(id, () => {
+          console.log(`Unsubscribed from channel '${id}'`);
+        });
       }
     });
   } catch (error) {
-    console.error("Redis error:", error);
-    res.status(500).send("Failed to store submission.");
+    console.error("Redis or submission error:", error);
+    res.status(500).send("Failed to store submission or handle Redis subscription.");
   }
 });
 
 //save data
-const saveData = async (userId, questionId, code, language, result) => {
+const saveData = async (userId, questionId, questionName , code, language, result) => {
   try {
     const sub = await Submission.findOneAndUpdate(
       { userId: userId, questionId: questionId },
-      { code: code, language: language, result: result },
+      { code: code, language: language, result: result , questionName : questionName },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
     // console.log("data saved" , sub)
@@ -222,6 +231,7 @@ app.use((err, req, res, next) => {
 async function startServer() {
   try {
     await client.connect();
+    await client2.connect();
     console.log("Connected to Redis");
 
     server.listen(8000, () => {
